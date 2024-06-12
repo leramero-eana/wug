@@ -12,10 +12,6 @@ def get_config():
     return config
 
 config = get_config()
-centraldb = sql.create_engine('mssql+pyodbc://{user}:{password}@{sql_server}/{sql_dbname}?driver={sql_driver}'.format_map(config))
-engine = centraldb.engine
-st_ch_total = pd.read_sql('SELECT * FROM wug.state_change', engine)
-st_ch = st_ch_total[st_ch_total['inicio'] < st_ch_total[st_ch_total['fin'] == st_ch_total['fin'].max()]['inicio'].max()]
 
 def segmentacion_mensual(df_eventos):
     # Creamos un dataframe vacío para ir agregando los segmentos de cada evento
@@ -93,6 +89,11 @@ def get_token(username, password):
         print(f"Error: {response.status_code} - {response.text}")
 
     return response.json()["access_token"]
+
+centraldb = sql.create_engine('mssql+pyodbc://{sql_server}/{sql_dbname}?trusted_connection={trusted}&driver={sql_driver}'.format_map(config))
+engine = centraldb.engine
+st_ch_total = pd.read_sql('SELECT * FROM wug.state_change_rout', engine)
+st_ch = st_ch_total[st_ch_total['inicio'] < st_ch_total[st_ch_total['fin'] == st_ch_total['fin'].max()]['inicio'].max()]
 
 global wug_url 
 wug_url = "http://wug.eana.local:9644"
@@ -306,7 +307,19 @@ mensual.drop_duplicates(inplace=True)
 
 mensual['corrección'] = mensual['corrección'].fillna(0)
 
-mensual.to_sql(name='state_change', schema='wug', index=False, if_exists='replace', con=engine)
+mensual = mensual.astype({
+    'deviceID': 'int',
+    'deviceName': 'string',
+    'monitorTypeName': 'string',
+    'stateName': 'string',
+    'internalMonitorState': 'string',
+    'result': 'string',
+    'id': 'int',
+    'servicio': 'string',
+    'sitio': 'string',
+    'corte_energia': 'int'})
+
+mensual.to_sql(name='state_change_rout', schema='wug', index=False, if_exists='replace', con=engine)
 
 st_ch_general = pd.read_sql('SELECT * FROM wug.state_change_general', engine)
 st_ch_g = st_ch_general[st_ch_general['inicio'] < st_ch_general[st_ch_general['fin'] == st_ch_general['fin'].max()]['inicio'].max()]
@@ -346,7 +359,7 @@ for dev in all_dev:
                 print(response)
                 error = response.json()['error']['code']
                 if error == 'TokenExpired':
-                    token = get_token(contrasenia, contrasenia)
+                    token = get_token(usuario, contrasenia)
                     headers = {
                         "Accept": "text/json",
                         "Authorization": "Bearer " + token

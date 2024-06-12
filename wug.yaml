@@ -1,6 +1,6 @@
 sql_dbname: estadistica
-sql_driver: ODBC Driver 17 for SQL Server
+sql_driver: SQL Server
 user: sa-estadistica
-password: Esteana2023%
-sql_server: 'cqw-arsat-vdb01'
-sql_trusted: 'yes'
+pass: Esteana2023%
+sql_server: cqw-arsat-vdb01
+trusted: true
